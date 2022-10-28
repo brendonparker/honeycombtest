@@ -1,0 +1,6 @@
+{
+    "FunctionName": "HoneyCombTest",
+    "S3Bucket": "YOUR_BUCKET_NAME",
+    "S3Key": "publish.zip",
+    "Publish": true
+}

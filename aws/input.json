@@ -1,0 +1,14 @@
+{
+    "FunctionName": "HoneyCombTest",
+    "Runtime": "dotnet6",
+    "Handler": "honeycombtest",
+    "Role": "arn:aws:iam::YOUR_ACCOUNT:role/lambda-ex",
+    "Code": {
+        "S3Bucket": "YOUR_BUCKET_NAME",
+        "S3Key": "publish.zip"
+    },
+    "Description": "",
+    "Timeout": 30,
+    "MemorySize": 1024,
+    "Publish": true
+}
