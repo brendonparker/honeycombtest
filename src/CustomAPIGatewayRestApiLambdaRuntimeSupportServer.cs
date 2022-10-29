@@ -3,32 +3,33 @@ using Amazon.Lambda.AspNetCoreServer.Hosting.Internal;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.Serialization.SystemTextJson;
+using Honeycomb.OpenTelemetry;
 using OpenTelemetry;
 using OpenTelemetry.Instrumentation.AWSLambda;
 using OpenTelemetry.Trace;
 
 public class CustomAPIGatewayHttpApiV2LambdaRuntimeSupportServer : APIGatewayHttpApiV2LambdaRuntimeSupportServer
 {
-    public TracerProvider? tracerProvider { get; }
+    public TracerProvider? _tracerProvider;
     public CustomAPIGatewayHttpApiV2LambdaRuntimeSupportServer(
+        IConfiguration config,
         IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        tracerProvider = Sdk.CreateTracerProviderBuilder()
-        // add other instrumentations
-        .AddAWSLambdaConfigurations()
-        .AddHoneycomb(opts => {
-            opts.ServiceName = "my-app";
-            opts.ApiKey = "YOUR_API_KEY";
-        })
-        .AddAspNetCoreInstrumentationWithBaggage()
-        .Build();
+        var honeycombOptions = config.GetSection(HoneycombOptions.ConfigSectionName)
+                .Get<HoneycombOptions>();
+
+        _tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddHoneycomb(honeycombOptions)
+            .AddAWSLambdaConfigurations()
+            .AddAspNetCoreInstrumentationWithBaggage()
+            .Build();
     }
 
     protected override HandlerWrapper CreateHandlerWrapper(IServiceProvider serviceProvider)
     {
-        var handler = new APIGatewayHttpApiV2MinimalApi(serviceProvider).FunctionHandlerAsync;
-        var handler2 = (APIGatewayHttpApiV2ProxyRequest input, ILambdaContext context) =>
-        AWSLambdaWrapper.TraceAsync(tracerProvider, handler, input, context);
-        return HandlerWrapper.GetHandlerWrapper(handler2, new DefaultLambdaJsonSerializer());
+        var innerHandler = new APIGatewayHttpApiV2MinimalApi(serviceProvider).FunctionHandlerAsync;
+        var outerHandler = (APIGatewayHttpApiV2ProxyRequest input, ILambdaContext context) =>
+            AWSLambdaWrapper.TraceAsync(_tracerProvider, innerHandler, input, context);
+        return HandlerWrapper.GetHandlerWrapper(outerHandler, new DefaultLambdaJsonSerializer());
     }
 }
